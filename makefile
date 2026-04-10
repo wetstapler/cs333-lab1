@@ -27,9 +27,9 @@ decrypt-w-symlink.o: decrypt-w-symlink.c
 	$(comp) -c -o decrypt-w-symlink.o
 
 clean:
-	rm *.txt
-	rm *.o
-	rm encrypt-w-inode
-	rm decrypt-w-inode
-	rm encrypt-w-symlink
-	rm decrypt-w-symlink
+	rm -f encrypt-w-inode
+	rm -f decrypt-w-inode
+	rm -f encrypt-w-symlink
+	rm -f decrypt-w-symlink
+	rm -f *.txt
+	rm -f *.o
