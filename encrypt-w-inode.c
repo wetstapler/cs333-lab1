@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
 		break;
 	case 'h':
 		printf(
-"To use this program, run ./encrypt-w-inode, and enter a message to encrypt\n");
+"To use this program, run %s, and enter a message to encrypt\n", argv[0]);
 		printf(
 "when prompted. You can use the following options:\n");
 		printf(
