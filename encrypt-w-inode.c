@@ -14,27 +14,28 @@
 int main(int argc, char** argv) {
 	int options;
 	char* message = NULL;
-	size_t readsize = BUFF;
+	size_t write_size = BUFF;
+	ssize_t read_size;
 	int fd = -1;
 	ssize_t fd_size;
-	char path[BUFF] = "./encrypted_message.txt";
+	char i_path[BUFF] = {'\0'};
+	char o_path[BUFF] = "./encrypted_message.txt";
 	struct stat stat_buff;
 	ino_t ino_key; //lowest order byte from the inode number
 	char char_key;
-
-	printf("there are %d arguments, the first of which is the program name, %s\n\n"
-			, argc, argv[0]);
+	int is_verbose = 0; //faux-boolean
 
 	while((options = getopt(argc, argv, "i:o:vh")) != -1){
 	switch(options) {
 	case 'i':
-		strcpy(path, optarg);
+		strcpy(i_path, optarg);
 		break;
 	case 'o':
-		strcpy(path, optarg);
+		strcpy(o_path, optarg);
 		break;
 	case 'v':
 		fprintf(stderr, "Verbosity increased\n");
+		is_verbose = 1;
 		break;
 	case 'h':
 		printf(
@@ -46,7 +47,7 @@ int main(int argc, char** argv) {
 		printf(
 "-o ofn\noutput a file with a particular name.\n");
 		printf(
-"otherwise, outputs a file called %s\n\n", path);
+"otherwise, outputs a file called %s\n\n", o_path);
 		printf(
 "-v\nincrease verbosity of stderr messages\n\n");
 		printf(
@@ -55,21 +56,44 @@ int main(int argc, char** argv) {
 	}
 	}
 
-	printf("Please type a message to be encrypted: ");
-	getline(&message, &readsize, stdin);
+	//if the -i option is not used, prompt for input
+	if(i_path[0] == '\0') {
+		printf("Please type a message to be encrypted: ");
+		getline(&message, &write_size, stdin);
+	} else {//otherwise read the -i argument into message
+		fd = open(i_path, O_RDONLY, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
+		if(fd == -1) {
+			if(is_verbose){
+				fprintf(stderr, "cannot open %s\n", i_path);
+			}
+			exit(EXIT_FAILURE);
+		}
+		message = malloc(sizeof(char) * BUFF);
+		read_size = read(fd, message, BUFF);
+		if(read_size == -1) {
+			if(is_verbose){
+				fprintf(stderr, "read() error on %s\n", i_path);
+			}
+			exit(EXIT_FAILURE);
+		}
+	}
 	
 	//we must first make sure the file exists before we can generate
 	//a key from the inode number
-	fd = open(path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |S_IROTH);
+	fd = open(o_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP |S_IROTH);
 	if(fd == -1){
-		fprintf(stderr, "open() failure\n");
+		if(is_verbose) {
+			fprintf(stderr, "open() failure\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 
 	printf("Encrypting message...\n");
 	//get inode number and make key from lowest byte
-	if(stat(path, &stat_buff) == -1) {
-		fprintf(stderr, "stat() failure\n");
+	if(stat(o_path, &stat_buff) == -1) {
+		if(is_verbose) {
+			fprintf(stderr, "stat() failure\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 	ino_key = stat_buff.st_ino & 255; //remove any data from beyond the lowest byte
@@ -80,9 +104,11 @@ int main(int argc, char** argv) {
 	}
 
 	printf("Writing message to file...\n");
-	fd_size = write(fd, message, readsize);
+	fd_size = write(fd, message, write_size);
 	if(fd_size == -1) {
-		fprintf(stderr, "write() failure\n");
+		if(is_verbose){
+			fprintf(stderr, "write() failure\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 

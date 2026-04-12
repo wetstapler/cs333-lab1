@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
 	int options;
 	int fd = -1;
 	ssize_t fd_size;
-	size_t readsize = BUFF;
+	size_t write_size = BUFF;
 	char i_path[BUFF] = "./encrypted_message.txt";
 	char o_path[BUFF] = "./decrypted_message.txt";
 	char raw_message[BUFF] = {'\0'};
@@ -23,9 +23,8 @@ int main(int argc, char** argv) {
 	struct stat stat_buff;
 	ino_t ino_key;
 	char char_key;
+	int is_verbose = 0; //faux-boolean
 
-        printf("there are %d arguments, the first of which is the program name, %s\n\n"
-                        , argc, argv[0]);
 
 	while((options = getopt(argc, argv, "i:o:vh")) != -1) {
 	switch(options) {
@@ -37,6 +36,7 @@ int main(int argc, char** argv) {
 		break;
 	case 'v':
 		fprintf(stderr, "Verbosity increased\n");
+		is_verbose = 1;
 		break;
 	case 'h':
 		printf(
@@ -60,19 +60,26 @@ int main(int argc, char** argv) {
 	printf("Opening %s file\n", i_path);
 	fd = open(i_path, O_RDONLY, S_IRWXU);
 	if(fd == -1) {
-		fprintf(stderr, "open() error\n\n");
+		if(is_verbose){
+			fprintf(stderr, "open() error\n\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 	read_size = read(fd, raw_message, BUFF);
 	if(read_size == -1) {
-		fprintf(stderr, "read() error\n\n");
+		if(is_verbose){
+			fprintf(stderr, "read() error\n\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 
 	printf("Decrypting...\n");
 	//get inode number and make key from lowest byte
 	if(stat(i_path, &stat_buff) == -1) {
-		fprintf(stderr, "stat() failure\n");
+		if(is_verbose){
+			fprintf(stderr, "stat() failure\n");
+		}
+		exit(EXIT_FAILURE);
 	}
 	ino_key = stat_buff.st_ino & 255; //remove any data from beyond the lowest byte
 	char_key = (char) ino_key;
@@ -85,12 +92,16 @@ int main(int argc, char** argv) {
 	close(fd);
 	fd = open(o_path, O_WRONLY | O_CREAT | O_TRUNC, S_IRWXU);
 	if(fd == -1) {
-		fprintf(stderr, "open() error\n");
+		if(is_verbose){
+			fprintf(stderr, "open() error\n");
+		}
 		exit(EXIT_FAILURE);
 	}
-	fd_size = write(fd, raw_message, readsize);
+	fd_size = write(fd, raw_message, write_size);
 	if(fd_size == -1) {
-		fprintf(stderr, "write() error\n");
+		if(is_verbose){
+			fprintf(stderr, "write() error\n");
+		}
 		exit(EXIT_FAILURE);
 	}
 
